@@ -41,18 +41,19 @@ ECC数据分析工具是一款用于分析闪存芯片错误比特数（ECC Erro
 
 ### 2.4 EM混合分布拟合
 使用期望最大化（EM）算法拟合混合分布：
-- **四分布模型**：两对对数正态+Gamma分布
-- **初始权重**：均匀分布 [0.25, 0.25, 0.25, 0.25]
+- **三分布模型**（Gamma+Gamma+Lognormal）：初始权重 [1/3, 1/3, 1/3]
+- **双分布模型**（Lognormal+Gamma）：初始权重 [0.5, 0.5]，用于对比分析
 - **收敛条件**：权重变化 < 1e-6 或最大迭代100次
-- **对比分析**：同时输出双分布模型（Lognormal+Gamma）用于对比
 
-### 2.4 可视化输出
-每个 BIN 文件处理后生成三张图表：
+### 2.5 可视化输出
+每个 BIN 文件处理后生成五张图表：
 1. **sorted_data.png**: 排序后的 ECC 数据散点图，含统计阈值线
 2. **count_distribution.png**: 错误比特数频率直方图，含统计阈值
-3. **distribution_fit.png**: 频率直方图 + 四种分布拟合曲线 + 威布尔阈值
+3. **distribution_fit.png**: 频率直方图 + 三种分布拟合曲线（Normal、Lognormal、Gamma）
+4. **mixture_fit.png**: 3成分EM混合拟合（Gamma+Gamma+Lognormal）
+5. **mixture_fit2.png**: 2成分EM混合拟合（Lognormal+Gamma）- 控制组
 
-### 2.5 抽样处理说明
+### 2.6 抽样处理说明
 - 排序数据图采用分层抽样（Stratified Sampling）绘制
 - 分层抽样原理：
   * 将数据按排序后等分为10层（Strata）
@@ -74,7 +75,7 @@ ECC数据分析工具是一款用于分析闪存芯片错误比特数（ECC Erro
   * 适用于大数据量场景（百万级以上数据点）
 - 计数分布图不涉及抽样，使用完整统计数据绘制
 
-### 2.6 智能边界自适应
+### 2.7 智能边界自适应
 直方图右边界根据数据最大值自动调整：
 - 数据最大值 ≤ 250 → 右边界 = 250
 - 数据最大值 ≤ 500 → 右边界 = 500
@@ -95,8 +96,10 @@ ECC数据分析工具是一款用于分析闪存芯片错误比特数（ECC Erro
 - 包含以下文件：
   1. **sorted_data.png**    - 排序数据图（散点图 + 统计阈值线）
   2. **count_distribution.png** - 计数分布直方图
-  3. **distribution_fit.png** - 分布拟合图
-  4. **scanInfo.txt**       - 扫描信息文本报告
+  3. **distribution_fit.png** - 分布拟合图（三种分布）
+  4. **mixture_fit.png**    - 3成分EM混合拟合图（Gamma+Gamma+Lognormal）
+  5. **mixture_fit2.png**   - 2成分EM混合拟合图（Lognormal+Gamma）- 控制组
+  6. **scanInfo.txt**       - 扫描信息文本报告
 
 ## 四、图表详解
 
@@ -120,13 +123,33 @@ ECC数据分析工具是一款用于分析闪存芯片错误比特数（ECC Erro
 
 ### 4.3 分布拟合图（distribution_fit.png）
 - 上方：分布拟合参数摘要
-  * 四种分布的拟合参数和得分
+  * 三种分布的拟合参数和得分（Normal、Lognormal、Gamma）
   * Location Shift（loc）信息
+- 下方：直方图 + 三条拟合曲线
+  * 横轴：错误比特数
+  * 纵轴：页数计数
+  * 曲线：三种分布拟合（Normal、Lognormal、Gamma）
+
+### 4.4 3成分EM混合拟合图（mixture_fit.png）
+- 上方：EM算法拟合结果摘要
+  * 三种成分的权重（Gamma 1、Gamma 2、Lognormal）
+  * 各成分的分布参数（shape、scale）
+  * Location Shift（loc）信息
+  * 收敛迭代次数
 - 下方：直方图 + 四条拟合曲线
   * 横轴：错误比特数
   * 纵轴：页数计数
-  * 曲线：四种分布拟合
-  * 垂直线：威布尔分布阈值（p=0.00135）
+  * 曲线：Gamma 1、Gamma 2、Lognormal单独拟合 + 混合拟合
+
+### 4.5 2成分EM混合拟合图（mixture_fit2.png）- 控制组
+- 上方：EM算法拟合结果摘要（初始权重 [0.5, 0.5]）
+  * 两种成分的权重（Lognormal、Gamma）
+  * 各成分的分布参数
+  * 收敛迭代次数
+- 下方：直方图 + 三条拟合曲线
+  * 横轴：错误比特数
+  * 纵轴：页数计数
+  * 曲线：Lognormal、Gamma单独拟合 + 混合拟合
 
 ## 五、配置文件
 
@@ -199,14 +222,19 @@ python ecc_analyzer.py
 
 ## 九、更新日志
 
+### v1.4 (2026-06-16)
+- 新增3成分EM混合分布拟合（Gamma+Gamma+Lognormal）
+- 新增2成分EM混合分布拟合（Lognormal+Gamma）作为控制组
+- 输出图表增加至5张
+- 完善scanInfo.txt报告内容
+
 ### v1.3 (2026-06-05)
-- 新增四种概率分布拟合（正态、对数正态、Gamma、威布尔）
+- 新增三种概率分布拟合（正态、对数正态、Gamma）
 - 直方图右边界自适应调整
 - 修复数据形状不匹配的 bug
 - 基于直方图数据直接拟合（不展开）
 
 ### v1.2 (2026-06-04)
-- 威布尔分布拟合支持平移逻辑
 - 修复中文显示警告
 - 输出目录添加微秒级时间戳避免覆盖
 
